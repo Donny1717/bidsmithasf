@@ -1,0 +1,8 @@
+{
+  "name": "BidSmith ASF",
+  "description": "Automated registry and monitor for GOV.UK Procurement Policy Notes, Procurement Act 2023 guidance, and National Procurement Policy Statement with PDF metadata indexing, Python scraper script, AI analysis, Google Docs briefing exports, and Google Tasks compliance tracking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
