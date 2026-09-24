@@ -26,6 +26,11 @@ import {
   testSupabaseConnection,
   setRuntimeSupabaseConfig,
 } from './server/supabase';
+import {
+  requireApiKey,
+  generalRateLimiter,
+  aiRateLimiter,
+} from './server/auth';
 
 async function startServer() {
   const app = express();
@@ -33,6 +38,24 @@ async function startServer() {
 
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+  // ── Security middleware (Phase 1/2 hardening) ──────────────────────────────
+  // Trust the first proxy hop so req.ip reflects the real client behind
+  // Cloud Run / reverse proxies, keeping rate-limit buckets accurate.
+  app.set('trust proxy', 1);
+
+  // General rate limiting across the API surface.
+  app.use('/api', generalRateLimiter);
+
+  // API-key gate + tighter limit for expensive AI/LLM-backed routes.
+  // Health check and read-only document registry stay open for now.
+  app.use('/api/ai', requireApiKey, aiRateLimiter);
+  app.use('/api/tender', requireApiKey, aiRateLimiter);
+  app.use('/api/bid-proposal', requireApiKey, aiRateLimiter);
+
+  // Admin/privileged routes: API key required, general limit.
+  app.use('/api/database', requireApiKey);
+  app.use('/api/scraper/sync', requireApiKey);
 
   // API Routes
   app.get('/api/health', (req, res) => {
