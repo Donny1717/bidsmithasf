@@ -31,6 +31,16 @@ import {
   generalRateLimiter,
   aiRateLimiter,
 } from './server/auth';
+import {
+  verifyBearerToken,
+  extractBearerToken,
+} from './server/identity';
+import {
+  requirePermission,
+  ROLE_LABELS,
+} from './server/rbac';
+import { POLICY_PROFILES, selectPolicyProfile } from './server/policyRegistry';
+import { recordAudit, queryAudit, auditStats } from './server/audit';
 
 async function startServer() {
   const app = express();
@@ -84,7 +94,8 @@ async function startServer() {
   app.get('/api/documents/:id', (req, res) => {
     const doc = getDocumentById(req.params.id);
     if (!doc) {
-      return res.status(404).json({ error: 'Document not found' });
+      return res.status(404).json({ 
+error: 'Document not found' });
     }
     res.json(doc);
   });
@@ -143,7 +154,8 @@ async function startServer() {
   app.get('/api/scraper/python-script', (req, res) => {
     try {
       const scriptPath = path.join(process.cwd(), 'uk_procurement_scraper.py');
-      if (fs.existsSync(scriptPath)) {
+      i
+f (fs.existsSync(scriptPath)) {
         const content = fs.readFileSync(scriptPath, 'utf-8');
         res.type('text/plain').send(content);
       } else {
@@ -200,7 +212,8 @@ async function startServer() {
       const result = await analyzeTenderCompliance(requestData);
       res.json(result);
     } catch (error: any) {
-      console.error('API /api/tender/analyze error:', error);
+    
+  console.error('API /api/tender/analyze error:', error);
       res.status(500).json({ error: error.message || 'Tender compliance evaluation failed' });
     }
   });
@@ -256,7 +269,8 @@ async function startServer() {
       res.json(validation);
     } catch (error: any) {
       console.error('API /api/tender/validate-quality error:', error);
-      res.status(500).json({ error: error.message || 'Text quality validation failed' });
+      res.status(500).json({ err
+or: error.message || 'Text quality validation failed' });
     }
   });
 
@@ -315,7 +329,8 @@ async function startServer() {
   app.post('/api/bid-proposal/generate', async (req, res) => {
     try {
       const requestData = req.body;
-      if (!requestData || !requestData.tenderTitle || !requestData.companyProfile) {
+      if (!requestData || !requestData.tenderT
+itle || !requestData.companyProfile) {
         return res.status(400).json({ error: 'tenderTitle and companyProfile are required for proposal generation.' });
       }
 
@@ -365,7 +380,8 @@ async function startServer() {
   app.post('/api/database/save-supabase', (req, res) => {
     try {
       const { supabaseUrl, supabaseAnonKey } = req.body;
-      if (!supabaseUrl || !supabaseAnonKey) {
+      if (!supabaseUrl || !su
+pabaseAnonKey) {
         return res.status(400).json({ error: 'supabaseUrl and supabaseAnonKey are required' });
       }
       setRuntimeSupabaseConfig(supabaseUrl, supabaseAnonKey);
@@ -376,6 +392,152 @@ async function startServer() {
     }
   });
 
+
+  // ── Phase 1 Foundation (BS-NV-P1) ─────────────────────────────────────────
+  // Session: exchange a verified identity token for principal + memberships.
+  app.post('/api/foundation/session', async (req: any, res) => {
+    try {
+      const token = extractBearerToken(req);
+      if (!token) {
+        return res.status(401).json({ error: 'Authentication required.' });
+      }
+      const principal = await verifyBearerToken(token);
+      const { resolveMemberships } = await import('./server/rbac');
+      const memberships = await resolveMemberships(principal);
+      await recordAudit({
+        actorId: principal.subject,
+        actorEmail: principal.email,
+        action: 'session.create',
+        targetType: 'session',
+        result: 'success',
+        detail: { method: principal.method },
+      });
+      res.json({
+        principal: {
+          subject: principal.subject,
+          email: principal.email,
+          displayName: principal.displayName,
+          method: principal.method,
+          mfaVerified: principal.mfaVerified,
+        },
+        memberships: memberships.map((m) => ({
+          organisationId: m.organisationId,
+          organisationName: m.organisationName,
+          workspaceId: m.workspaceId,
+          workspaceName: m.workspaceName,
+          role: m.role,
+          roleLabel: ROLE_LABELS[m.role],
+        })),
+      });
+    } catch (err: any) {
+      try {
+        await recordAudit({
+          actorId: 'unknown',
+          action: 'session.create',
+          targetType: 'session',
+          result: 'denied',
+          detail: { reason: err?.message || 'verification failed' },
+        });
+      } catch {
+        /* audit must not block the denial response */
+      }
+      res.status(401).json({ error: 'Sign-in failed: ' + (err?.message || 'invalid identity') });
+    }
+  });
+
+  // Policy registry: versioned profiles with effective dates.
+  app.get('/api/foundation/policies', requirePermission('policy.read'), (req: any, res) => {
+    res.json({ profiles: POLICY_PROFILES });
+  });
+
+  app.get('/api/foundation/policies/select', requirePermission('policy.read'), (req: any, res) => {
+    const commencement = String(req.query.commencementDate || '');
+    try {
+      const profile = selectPolicyProfile(commencement);
+      res.json({ profile });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Projects: a permitted state change for the Phase 1 exit demo.
+  app.get('/api/foundation/projects', requirePermission('project.read'), async (req: any, res) => {
+    const workspaceId = req.memberships?.[0]?.workspaceId ?? null;
+    await recordAudit({
+      actorId: req.principal!.subject,
+      actorEmail: req.principal!.email,
+      action: 'project.list',
+      targetType: 'project',
+      workspaceId,
+      result: 'success',
+    });
+    res.json({ projects: [] }); // Phase 1 skeleton: list API wired, storage next phase.
+  });
+
+  app.post('/api/foundation/projects', requirePermission('project.create'), async (req: any, res) => {
+    const { title, commencementDate } = req.body || {};
+    const workspaceId = req.memberships?.[0]?.workspaceId ?? null;
+    if (!title || typeof title !== 'string') {
+      await recordAudit({
+        actorId: req.principal!.subject,
+        actorEmail: req.principal!.email,
+        action: 'project.create',
+        targetType: 'project',
+        workspaceId,
+        result: 'denied',
+        detail: { reason: 'title required' },
+      });
+      return res.status(400).json({ error: 'title is required.' });
+    }
+    let policyProfileId: string | null = null;
+    if (commencementDate) {
+      try {
+        policyProfileId = selectPolicyProfile(String(commencementDate)).id;
+      } catch (err: any) {
+        return res.status(400).json({ error: err.message });
+      }
+    }
+    const eventId = await recordAudit({
+      actorId: req.principal!.subject,
+      actorEmail: req.principal!.email,
+      action: 'project.create',
+      targetType: 'project',
+      targetId: title,
+      workspaceId,
+      result: 'success',
+      detail: { title, commencementDate, policyProfileId },
+    });
+    res.status(201).json({
+      project: { title, commencementDate: commencementDate ?? null, policyProfileId, status: 'active' },
+      auditEventId: eventId.eventId,
+    });
+  });
+
+  // Audit viewer: read the immutable ledger.
+  app.get('/api/foundation/audit', requirePermission('audit.read'), async (req: any, res) => {
+    const limit = Number(req.query.limit) || 200;
+    const list = queryAudit({ limit });
+    await recordAudit({
+      actorId: req.principal!.subject,
+      actorEmail: req.principal!.email,
+      action: 'audit.view',
+      targetType: 'audit_event',
+      workspaceId: null,
+      result: 'success',
+      detail: { count: list.length },
+    });
+    res.json({ events: list, stats: auditStats() });
+  });
+
+  // Version endpoint (Phase 1 engineering controls).
+  app.get('/api/version', (req, res) => {
+    res.json({
+      service: 'bidsmith-asf',
+      phase: '1-foundation',
+      version: process.env.APP_VERSION || '0.0.0-dev',
+      buildTime: process.env.BUILD_TIME || null,
+    });
+  });
 
   // Vite middleware for development or static serving for production
   if (process.env.NODE_ENV !== 'production') {
