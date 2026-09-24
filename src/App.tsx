@@ -10,6 +10,7 @@ import { TenderComplianceScanner } from './components/TenderComplianceScanner';
 import { BidProposalBuilder } from './components/BidProposalBuilder';
 import { DocumentCompositionSuite } from './components/DocumentCompositionSuite';
 import { CommercialLandingPage } from './components/CommercialLandingPage';
+import { LandingPage } from './components/LandingPage';
 import { SystemEngineModal } from './components/SystemEngineModal';
 import { WorkspaceBrandingModal } from './components/WorkspaceBrandingModal';
 import { DatabaseConfigModal } from './components/DatabaseConfigModal';
@@ -290,7 +291,7 @@ export function App() {
       <main className="flex-1 w-full mx-auto px-3 sm:px-6 lg:px-8 xl:px-10 py-8 sm:py-12 lg:py-14">
         {/* VIEW 1: WORDPRESS-STYLE SAAS PRODUCT LANDING PAGE */}
         {viewMode === 'landing' && (
-          <CommercialLandingPage
+          <LandingPage
             onEnterWorkspace={handleEnterWorkspace}
             onSignInRequired={handleSignIn}
             onOpenBrandingModal={() => setIsBrandingModalOpen(true)}
