@@ -63,8 +63,8 @@ export async function recordAudit(input: {
 
   // Best-effort persistence; the in-memory ledger remains the fallback.
   try {
-    const { getSupabaseClient } = await import('./supabase');
-    const client = getSupabaseClient();
+    const { getActiveSupabaseClient } = await import('./supabase');
+    const client = getActiveSupabaseClient();
     if (client) {
       await client.from('audit_events').insert({
         event_id: event.eventId,

@@ -154,8 +154,7 @@ error: 'Document not found' });
   app.get('/api/scraper/python-script', (req, res) => {
     try {
       const scriptPath = path.join(process.cwd(), 'uk_procurement_scraper.py');
-      i
-f (fs.existsSync(scriptPath)) {
+      if (fs.existsSync(scriptPath)) {
         const content = fs.readFileSync(scriptPath, 'utf-8');
         res.type('text/plain').send(content);
       } else {
@@ -269,8 +268,7 @@ f (fs.existsSync(scriptPath)) {
       res.json(validation);
     } catch (error: any) {
       console.error('API /api/tender/validate-quality error:', error);
-      res.status(500).json({ err
-or: error.message || 'Text quality validation failed' });
+      res.status(500).json({ error: error.message || 'Text quality validation failed' });
     }
   });
 
@@ -329,8 +327,7 @@ or: error.message || 'Text quality validation failed' });
   app.post('/api/bid-proposal/generate', async (req, res) => {
     try {
       const requestData = req.body;
-      if (!requestData || !requestData.tenderT
-itle || !requestData.companyProfile) {
+      if (!requestData || !requestData.tenderTitle || !requestData.companyProfile) {
         return res.status(400).json({ error: 'tenderTitle and companyProfile are required for proposal generation.' });
       }
 
@@ -380,8 +377,7 @@ itle || !requestData.companyProfile) {
   app.post('/api/database/save-supabase', (req, res) => {
     try {
       const { supabaseUrl, supabaseAnonKey } = req.body;
-      if (!supabaseUrl || !su
-pabaseAnonKey) {
+      if (!supabaseUrl || !supabaseAnonKey) {
         return res.status(400).json({ error: 'supabaseUrl and supabaseAnonKey are required' });
       }
       setRuntimeSupabaseConfig(supabaseUrl, supabaseAnonKey);

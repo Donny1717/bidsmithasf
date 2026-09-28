@@ -91,8 +91,8 @@ export async function resolveMemberships(principal: Principal): Promise<Membersh
     }];
   }
 
-  const { getSupabaseClient } = await import('./supabase');
-  const client = getSupabaseClient();
+  const { getActiveSupabaseClient } = await import('./supabase');
+  const client = getActiveSupabaseClient();
   if (!client) {
     throw new Error('Membership service unavailable (no database configured)');
   }
