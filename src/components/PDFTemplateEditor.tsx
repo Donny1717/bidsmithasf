@@ -33,7 +33,8 @@ import {
   Layers,
   Grid3X3,
   Rows3,
-  Columns3
+  Columns3,
+  FileText
 } from 'lucide-react';
 import { 
   Button, 
@@ -76,6 +77,8 @@ interface TemplateStyle {
   borderWidth?: string;
   borderColor?: string;
   borderRadius?: string;
+  border?: string;
+  borderTop?: string;
   lineHeight?: string;
   letterSpacing?: string;
 }

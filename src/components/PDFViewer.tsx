@@ -5,6 +5,7 @@ import 'react-pdf/dist/esm/Page/TextLayer.css';
 import {
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   ZoomIn,
   ZoomOut,
   RotateCw,
@@ -12,7 +13,6 @@ import {
   Download,
   Printer,
   Fullscreen,
-  FullscreenExit,
   FileText,
   X,
   Search,
@@ -225,7 +225,7 @@ const Toolbar = ({
           aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
         >
           {isFullscreen ? (
-            <FullscreenExit className="h-4 w-4" />
+            <Fullscreen className="h-4 w-4" />
           ) : (
             <Fullscreen className="h-4 w-4" />
           )}

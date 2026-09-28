@@ -2,7 +2,7 @@
 // Modern, Reusable Components with Tailwind CSS
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckCircle2,
   AlertCircle,
@@ -855,11 +855,16 @@ export const TableBody = React.forwardRef<
 
 TableBody.displayName = 'TableBody';
 
+interface TableRowProps extends React.HTMLAttributes<HTMLTableRowElement> {
+  striped?: boolean;
+  index?: number;
+}
+
 export const TableRow = React.forwardRef<
   HTMLTableRowElement,
-  React.HTMLAttributes<HTMLTableRowElement>
+  TableRowProps
 >(({ children, className = '', striped, index, ...props }, ref) => {
-  const rowClassName = striped && index && index % 2 === 0 ? 'bg-slate-50' : '';
+  const rowClassName = striped && index !== undefined && index % 2 === 0 ? 'bg-slate-50' : '';
   return (
     <tr
       ref={ref}
